@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Imperisoft</title>
-<meta name="description" content="Imperisoft — a software practice of one. Systems that hold money and keep their word. Type help, or write to hello@imperisoft.io.">
+<meta name="description" content="Imperisoft — systems that hold money and keep their word. Type help, or write to hello@imperisoft.io.">
 <meta property="og:title" content="Imperisoft">
 <meta property="og:description" content="guest@imperisoft:~$ — systems that hold money and keep their word.">
 <meta name="theme-color" content="#0a0b0d">
@@ -156,7 +156,7 @@
     <div class="term-body" id="body">
       <div class="out" id="out"></div>
       <div class="prompt-row">
-        <span class="ps1">guest@<b>imperisoft</b>:~$&nbsp;</span>
+        <span class="ps1" id="ps1">guest@<b>imperisoft</b>:~$&nbsp;</span>
         <input id="cmd" class="cmdline" type="text" autocomplete="off" autocapitalize="off"
                spellcheck="false" aria-label="Terminal command input" enterkeyhint="go">
       </div>
@@ -165,6 +165,7 @@
 
   <div class="chips" aria-label="Shortcuts for the terminal-averse">
     <button data-cmd="whois">whois</button>
+    <button data-cmd="services">services</button>
     <button data-cmd="work">work</button>
     <button data-cmd="principles">principles</button>
     <button data-cmd="contact">contact</button>
@@ -177,94 +178,249 @@
 
   <noscript>
     <p style="color:#8f97a3; max-width: 40rem;">
-      Imperisoft is a UK software practice of one: systems that hold money and
-      keep their word. Currently building Motoshift (motoshift.uk). The rest is
-      a conversation — hello@imperisoft.io.
+      Imperisoft is a UK software company: systems that hold money and keep
+      their word. Currently building Motoshift (motoshift.uk). The rest is a
+      conversation — hello@imperisoft.io.
     </p>
   </noscript>
 </div>
 
 <script>
-/* A real terminal, not a film prop: dry output, tab completion, history.
-   Everything important is also reachable without typing (the chips), and
-   the footer carries the registration whether or not JS runs. */
+/* A real terminal with a small filesystem. Everything important is also
+   reachable without typing (the chips), and the footer carries the
+   registration whether or not JS runs. The dry jokes are load-bearing:
+   curiosity is the qualification we hire clients by. */
 (() => {
   const out = document.getElementById('out')
   const cmd = document.getElementById('cmd')
   const body = document.getElementById('body')
+  const ps1 = document.getElementById('ps1')
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
   const history = []
   let historyAt = 0
+  let inVim = false
 
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  const MAIL = '<a href="mailto:hello@imperisoft.io">hello@imperisoft.io</a>'
 
-  const COMMANDS = {
-    help: () => [
-      '<span class="dim">Available commands:</span>',
-      '  <span class="cmdlink" data-cmd="whois">whois</span>        who is behind this',
-      '  <span class="cmdlink" data-cmd="work">work</span>         what is being built',
-      '  <span class="cmdlink" data-cmd="stack">stack</span>        what it is built with',
-      '  <span class="cmdlink" data-cmd="principles">principles</span>   how it is built',
-      '  <span class="cmdlink" data-cmd="contact">contact</span>      start the real conversation',
-      '  <span class="cmdlink" data-cmd="clear">clear</span>        clean slate',
-    ],
-    whois: () => [
-      '<span class="acc">Imperisoft Ltd</span> — a software practice of one.',
+  /* ---------- the filesystem ---------- */
+
+  const FS = {
+    'README.txt': [
+      '<span class="acc">IMPERISOFT LTD</span>',
       '',
-      'One engineer. Few projects, taken whole: designed, built,',
-      'run in production, and written down well enough to hand over.',
+      'Systems that hold money and keep their word.',
+      'Few projects, taken whole: designed, built, run in',
+      'production, and written down well enough to hand over.',
+      '',
+      'Who builds them is a conversation, not a webpage.',
       '',
       '<span class="dim">Registered in England &amp; Wales, no. 16280545.</span>',
     ],
-    work: () => [
-      '<span class="acc">CURRENTLY</span>  <a href="https://motoshift.uk">motoshift.uk</a>',
+    'services.txt': [
+      '<span class="dim">SERVICES — scope is agreed in private.</span>',
       '',
-      'A UK marketplace for used motorcycle gear, where the money',
-      'waits until the rider is sure: held payments, verified',
-      'sellers, declared crash history, disputes that end with a',
-      'human decision.',
+      '  01  <span class="acc">PRODUCT</span>       things people use, built end to end',
+      '  02  <span class="acc">PLATFORMS</span>     marketplaces · money held in trust · disputes',
+      '  03  <span class="acc">OPERATIONS</span>    it runs, it is watched, it comes back',
+      '  04  <span class="acc">RESCUE</span>        systems nobody can explain any more',
       '',
-      '<span class="dim">29 releases this cycle · 543 automated tests · tag → deploy in minutes</span>',
-      '<span class="dim">Everything before this one is under NDA. Ask.</span>',
+      '<span class="dim">Next step:</span> ' + MAIL,
     ],
-    stack: () => [
-      'Deliberately boring:',
+    'stack.txt': [
+      '<span class="dim">Boring on purpose. In production over the years:</span>',
       '',
-      '  Django · PostgreSQL · Redis · Celery · React · Capacitor',
+      '  <span class="acc">BACKEND</span>    Python · Django · PostgreSQL · Redis · Celery',
+      '  <span class="acc">FRONTEND</span>   TypeScript · React · Next.js · Tailwind',
+      '  <span class="acc">MOBILE</span>     Capacitor → the app stores',
+      '  <span class="acc">INFRA</span>      Terraform · Docker · Nginx · Cloudflare',
+      '  <span class="acc">ALSO</span>       multi-tenant platforms · payment rails ·',
+      '             SEO tooling · a token experiment we don’t talk about',
       '',
-      '<span class="dim">A new dependency has to earn its place. Most don’t.</span>',
+      '<span class="dim">A new tool has to earn its place. Most don’t.</span>',
     ],
-    principles: () => [
+    'manifest.txt': [
       '01  Boring technology, chosen on purpose.',
       '02  Every decision written down, with its reasons.',
       '03  Migrations that can roll back.',
       '04  Backups proven by restoring them.',
       '05  Documentation is part of done.',
     ],
+    'work': {
+      'motoshift.txt': [
+        '<span class="acc">CURRENTLY</span>  <a href="https://motoshift.uk">motoshift.uk</a>',
+        '',
+        'A UK marketplace for used motorcycle gear, where the money',
+        'waits until the rider is sure: held payments, verified',
+        'sellers, declared crash history, disputes that end with a',
+        'human decision.',
+        '',
+        '<span class="dim">29 releases this cycle · 543 automated tests · tag → deploy in minutes</span>',
+      ],
+      'archive': {
+        '2019-2025.tar.enc': [
+          '<span class="dim">[binary — AES-256]</span>',
+          '',
+          'Encrypted at rest. The key is a conversation: ' + MAIL,
+        ],
+      },
+    },
+    'notes': {
+      'on-boring-technology.txt': [
+        'Excitement belongs in the product,',
+        'never in the pager.',
+      ],
+      'on-handover.txt': [
+        'If it cannot be handed over, it is not finished.',
+        'Software you are hostage to is not an asset.',
+      ],
+      'todo.txt': [
+        '[x] build it',
+        '[x] ship it',
+        '[x] run it',
+        '[ ] sleep',
+      ],
+    },
+    '.secrets': ['cat: .secrets: <span class="dim">nice try. earn it:</span> ' + MAIL],
+    '.ssh': {},
+  }
+
+  let cwd = [] // path segments under ~
+
+  const nodeAt = (segs) => segs.reduce((n, s) => (n && typeof n === 'object' && !Array.isArray(n) ? n[s] : undefined), FS)
+  const isDir = (n) => n && typeof n === 'object' && !Array.isArray(n)
+  const cwdStr = () => '~' + (cwd.length ? '/' + cwd.join('/') : '')
+
+  function resolve(path) {
+    if (!path || path === '~') return []
+    let segs = path.startsWith('~/') ? [] : [...cwd]
+    if (path.startsWith('~/')) path = path.slice(2)
+    for (const part of path.split('/')) {
+      if (!part || part === '.') continue
+      if (part === '..') segs.pop()
+      else segs.push(part)
+    }
+    return segs
+  }
+
+  function refreshPrompt() {
+    ps1.innerHTML = 'guest@<b>imperisoft</b>:' + esc(cwdStr()) + '$&nbsp;'
+  }
+
+  /* ---------- fs commands ---------- */
+
+  function ls(arg) {
+    const all = /(^|\s)-a(\s|$)/.test(arg || '')
+    const target = (arg || '').replace(/(^|\s)-a(\s|$)/, ' ').trim()
+    const node = nodeAt(resolve(target))
+    if (node === undefined) return [`ls: ${esc(target)}: no such file or directory`]
+    if (!isDir(node)) return [esc(target)]
+    const names = Object.keys(node)
+      .filter((n) => all || !n.startsWith('.'))
+      .sort()
+      .map((n) => (isDir(node[n]) ? `<span class="acc">${n}/</span>` : n))
+    if (all) names.unshift('<span class="dim">./  ../</span>')
+    return [names.join('   ') || '<span class="dim">(empty. for now.)</span>']
+  }
+
+  function cd(arg) {
+    if (arg === '.ssh' || (arg || '').endsWith('/.ssh')) {
+      return ['cd: .ssh: <span class="dim">permission denied (publickey). obviously.</span>']
+    }
+    const segs = resolve(arg || '~')
+    const node = nodeAt(segs)
+    if (node === undefined) return [`cd: ${esc(arg)}: no such file or directory`]
+    if (!isDir(node)) return [`cd: ${esc(arg)}: not a directory`]
+    cwd = segs
+    refreshPrompt()
+    return []
+  }
+
+  function cat(arg) {
+    if (!arg) return ['cat: which file? <span class="dim">(ls is free)</span>']
+    const node = nodeAt(resolve(arg))
+    if (node === undefined) return [`cat: ${esc(arg)}: no such file or directory`]
+    if (isDir(node)) return [`cat: ${esc(arg)}: is a directory`]
+    return node
+  }
+
+  function tree(node = FS, prefix = '') {
+    const lines = prefix === '' ? ['<span class="dim">~</span>'] : []
+    const names = Object.keys(node).filter((n) => !n.startsWith('.')).sort()
+    names.forEach((name, i) => {
+      const last = i === names.length - 1
+      const branch = last ? '└── ' : '├── '
+      const child = node[name]
+      lines.push(prefix + branch + (isDir(child) ? `<span class="acc">${name}/</span>` : name))
+      if (isDir(child)) lines.push(...tree(child, prefix + (last ? '    ' : '│   ')))
+    })
+    if (prefix === '') lines.push('', '<span class="dim">hidden files are hidden for a reason. ls -a.</span>')
+    return lines
+  }
+
+  /* ---------- commands ---------- */
+
+  const COMMANDS = {
+    help: () => [
+      '<span class="dim">Available commands:</span>',
+      '  <span class="cmdlink" data-cmd="whois">whois</span>        who is behind this',
+      '  <span class="cmdlink" data-cmd="services">services</span>     what can be commissioned',
+      '  <span class="cmdlink" data-cmd="work">work</span>         what is being built',
+      '  <span class="cmdlink" data-cmd="principles">principles</span>   how it is built',
+      '  <span class="cmdlink" data-cmd="contact">contact</span>      start the real conversation',
+      '  <span class="cmdlink" data-cmd="clear">clear</span>        clean slate',
+      '',
+      '<span class="dim">This machine has a filesystem: ls, cd, cat, tree.</span>',
+      '<span class="dim">Curiosity is rewarded.</span>',
+    ],
+    whois: () => FS['README.txt'],
+    services: () => FS['services.txt'],
+    work: () => FS.work['motoshift.txt'],
+    motoshift: () => FS.work['motoshift.txt'],
+    principles: () => FS['manifest.txt'],
     contact: () => [
       'The rest doesn’t fit in a terminal.',
       '',
-      '  <a href="mailto:hello@imperisoft.io">hello@imperisoft.io</a>',
+      '  ' + MAIL,
       '',
       '<span class="dim">Plain email. A human replies.</span>',
     ],
-    ls: () => ['manifest.txt   work/   <span class="dim">.secrets  (permission denied)</span>'],
-    'cat manifest.txt': () => COMMANDS.principles(),
-    'cat .secrets': () => ['cat: .secrets: <span class="dim">nice try. earn it:</span> <a href="mailto:hello@imperisoft.io">hello@imperisoft.io</a>'],
+    email: () => COMMANDS.contact(),
+    stack: () => FS['stack.txt'],
     'sudo hire': () => [
       '<span class="ok">[sudo] permission granted.</span>',
       '',
       'Capacity: one engagement at a time.',
-      'Next step: <a href="mailto:hello@imperisoft.io">hello@imperisoft.io</a>',
+      'Next step: ' + MAIL,
     ],
+    hire: () => COMMANDS['sudo hire'](),
+    'sudo su': () => ['su: <span class="dim">root is earned, not typed.</span>'],
+    su: () => COMMANDS['sudo su'](),
     whoami: () => ['guest. <span class="dim">For now.</span>'],
-    pwd: () => ['/home/guest/somewhere-worth-being'],
+    date: () => [new Date().toUTCString() + '  <span class="dim">· ships daily</span>'],
+    pwd: () => ['/home/guest' + (cwd.length ? '/' + cwd.join('/') : '')],
+    history: () => history.map((h, i) => `  ${String(i + 1).padStart(3)}  ${esc(h)}`),
     exit: () => ['<span class="dim">There is no exit. There is only</span> <span class="cmdlink" data-cmd="contact">contact</span><span class="dim">.</span>'],
+    matrix: () => ['<span class="dim">no. we’re professionals.</span>'],
+    'ping motoshift.uk': () => [
+      'PING motoshift.uk: 64 bytes: <span class="ok">alive</span> <span class="dim">— and taking payments.</span>',
+    ],
+    ping: () => ['ping: usage: ping motoshift.uk <span class="dim">(the only host that matters here)</span>'],
+    'rm -rf /': () => ['rm: <span class="dim">permission denied. and manners.</span>'],
+    make: () => ['make: *** No rule to make target ’money’. <span class="dim">There is: </span><span class="cmdlink" data-cmd="services">services</span>'],
+    neofetch: () => [
+      '<span class="acc">  ██▓</span>   <span class="ok">guest@imperisoft</span>',
+      '<span class="acc">  ██▓</span>   ────────────────',
+      '<span class="acc">  ██▓</span>   OS:       production, always',
+      '<span class="acc">  ██▓</span>   Uptime:   since 2026, unbroken',
+      '<span class="acc">  ▀▀▓</span>   Shell:    the one you’re in',
+      '<span class="acc">  ██▓</span>   Motto:    keep your word',
+    ],
     clear: () => { out.innerHTML = ''; return [] },
+    ls, cd, cat, tree: () => tree(),
   }
-  COMMANDS.motoshift = COMMANDS.work
-  COMMANDS.hire = COMMANDS['sudo hire']
-  COMMANDS.email = COMMANDS.contact
+
+  /* ---------- engine ---------- */
 
   function print(lines) {
     if (!lines.length) return
@@ -275,7 +431,7 @@
   }
 
   function echoPrompt(text) {
-    print(['<span class="ok">guest@<span class="acc">imperisoft</span>:~$</span> ' + esc(text)])
+    print(['<span class="ok">guest@<span class="acc">imperisoft</span>:' + esc(cwdStr()) + '$</span> ' + esc(text)])
   }
 
   function run(raw) {
@@ -284,9 +440,35 @@
     if (!text) return
     history.push(text)
     historyAt = history.length
-    const handler = COMMANDS[text.toLowerCase()]
-    if (handler) print(handler())
-    else print([`zsh: command not found: ${esc(text)}`, '<span class="dim">try</span> <span class="cmdlink" data-cmd="help">help</span>'])
+
+    if (inVim) {
+      if (text === ':q!' || text === ':q' || text === ':wq') {
+        inVim = false
+        return print(['<span class="ok">you escaped.</span> <span class="dim">respect.</span>'])
+      }
+      return print(['<span class="dim">E37: no write since last change —</span> :q! <span class="dim">to escape. everyone forgets.</span>'])
+    }
+    if (text === 'vim' || text === 'vi' || text === 'nano' || text === 'emacs') {
+      if (text === 'nano') return print(['<span class="dim">nano? we said mysterious, not cosy.</span>'])
+      if (text === 'emacs') return print(['<span class="dim">emacs is an operating system. this is a website.</span>'])
+      inVim = true
+      return print(['<span class="dim">-- INSERT --   (you know how this ends)</span>'])
+    }
+
+    const lower = text.toLowerCase()
+    if (COMMANDS[lower]) return print(COMMANDS[lower]())
+
+    const [head, ...rest] = text.split(/\s+/)
+    const arg = rest.join(' ')
+    const h = head.toLowerCase()
+    if (h === 'ls') return print(ls(arg))
+    if (h === 'cd') return print(cd(arg))
+    if (h === 'cat') return print(cat(arg))
+    if (h === 'tree') return print(tree())
+    if (h === 'echo') return print([esc(arg) || ''])
+    if (h === 'sudo') return print(['sudo: ' + esc(arg || '?') + ': <span class="dim">ambition noted.</span> <span class="cmdlink" data-cmd="sudo hire">sudo hire</span> <span class="dim">is the one that works.</span>'])
+
+    print([`zsh: command not found: ${esc(head)}`, '<span class="dim">try</span> <span class="cmdlink" data-cmd="help">help</span>'])
   }
 
   cmd.addEventListener('keydown', (e) => {
@@ -297,11 +479,19 @@
       e.preventDefault()
     } else if (e.key === 'Tab') {
       e.preventDefault()
-      const part = cmd.value.toLowerCase()
-      if (!part) return
-      const match = Object.keys(COMMANDS).filter((c) => c.startsWith(part))
-      if (match.length === 1) cmd.value = match[0]
-      else if (match.length > 1) print(['<span class="dim">' + match.join('   ') + '</span>'])
+      const value = cmd.value
+      if (!value) return
+      const parts = value.split(/\s+/)
+      const partial = parts[parts.length - 1].toLowerCase()
+      const here = nodeAt(cwd) || {}
+      const pool = parts.length === 1
+        ? [...Object.keys(COMMANDS), 'vim', ...Object.keys(here)]
+        : Object.keys(here)
+      const match = [...new Set(pool)].filter((c) => c.toLowerCase().startsWith(partial))
+      if (match.length === 1) {
+        parts[parts.length - 1] = match[0]
+        cmd.value = parts.join(' ')
+      } else if (match.length > 1) print(['<span class="dim">' + match.map(esc).join('   ') + '</span>'])
     }
   })
 
@@ -313,12 +503,10 @@
     if (link) { run(link.dataset.cmd); cmd.focus() }
   })
 
-  // Boot: a couple of quiet lines, then help — typed, unless motion is off.
-  const boot = [
+  print([
     '<span class="dim">imperisoft.io — session opened. this terminal is real; so is the work.</span>',
     '',
-  ]
-  print(boot)
+  ])
   const intro = 'help'
   if (reduced) { run(intro) }
   else {
