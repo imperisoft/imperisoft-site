@@ -344,6 +344,33 @@
     return node
   }
 
+  const strip = (line) => line.replace(/<[^>]*>/g, '')
+  const READONLY = (tool) =>
+    [`${tool}: <span class="dim">read-only filesystem. writing is not permitted on this host.</span>`]
+
+  function fileLines(arg, tool) {
+    if (!arg) return { err: [`${tool}: which file? <span class="dim">(ls is free)</span>`] }
+    const node = nodeAt(resolve(arg))
+    if (node === undefined) return { err: [`${tool}: ${esc(arg)}: no such file or directory`] }
+    if (isDir(node)) return { err: [`${tool}: ${esc(arg)}: is a directory`] }
+    return { lines: node }
+  }
+
+  function nano(arg) {
+    const { lines, err } = fileLines(arg, 'nano')
+    if (err) return err
+    const name = arg.split('/').pop()
+    return [
+      `<span class="dim">GNU nano 7.2</span>              ${esc(name)}              <span class="acc">[Read Only]</span>`,
+      '<span class="dim">──────────────────────────────────────────────</span>',
+      ...lines,
+      '<span class="dim">──────────────────────────────────────────────</span>',
+      '<span class="dim">^X Exit   ^O Write Out (disabled on this host)   ^W Where Is</span>',
+      '',
+      '<span class="dim">nano exited: nothing was saved. nothing ever is.</span>',
+    ]
+  }
+
   function tree(node = FS, prefix = '') {
     const lines = prefix === '' ? ['<span class="dim">~</span>'] : []
     const names = Object.keys(node).filter((n) => !n.startsWith('.')).sort()
@@ -370,7 +397,8 @@
       '  <span class="cmdlink" data-cmd="contact">contact</span>      start the real conversation',
       '  <span class="cmdlink" data-cmd="clear">clear</span>        clean slate',
       '',
-      '<span class="dim">This machine has a filesystem: ls, cd, cat, tree.</span>',
+      '<span class="dim">This machine has a filesystem, and the usual tools mostly work:</span>',
+      '<span class="dim">ls, cd, cat, tree, grep, head, nano… Writing is not permitted.</span>',
       '<span class="dim">Curiosity is rewarded.</span>',
     ],
     whois: () => FS['README.txt'],
@@ -442,30 +470,106 @@
     historyAt = history.length
 
     if (inVim) {
+      if (text === ':w' || text === ':w!' || text === ':x') {
+        return print(['<span class="dim">E45: ’readonly’ option is set — writing is not permitted on this host.</span>'])
+      }
       if (text === ':q!' || text === ':q' || text === ':wq') {
         inVim = false
-        return print(['<span class="ok">you escaped.</span> <span class="dim">respect.</span>'])
+        const note = text === ':wq' ? ' <span class="dim">(nothing was written. it never is.)</span>' : ''
+        return print(['<span class="ok">you escaped.</span> <span class="dim">respect.</span>' + note])
       }
       return print(['<span class="dim">E37: no write since last change —</span> :q! <span class="dim">to escape. everyone forgets.</span>'])
     }
-    if (text === 'vim' || text === 'vi' || text === 'nano' || text === 'emacs') {
-      if (text === 'nano') return print(['<span class="dim">nano? we said mysterious, not cosy.</span>'])
-      if (text === 'emacs') return print(['<span class="dim">emacs is an operating system. this is a website.</span>'])
+    const vimMatch = text.match(/^(vim|vi)(?:\s+(\S+))?$/i)
+    if (vimMatch) {
+      const shown = []
+      if (vimMatch[2]) {
+        const { lines, err } = fileLines(vimMatch[2], 'vim')
+        if (err) return print(err)
+        shown.push(...lines, '')
+      }
       inVim = true
-      return print(['<span class="dim">-- INSERT --   (you know how this ends)</span>'])
+      return print([...shown, '<span class="dim">-- INSERT --   (you know how this ends)</span>'])
     }
+    if (text === 'emacs') return print(['<span class="dim">emacs is an operating system. this is a website.</span>'])
 
     const lower = text.toLowerCase()
     if (COMMANDS[lower]) return print(COMMANDS[lower]())
+
+    if (text.includes('>')) {
+      const target = text.split('>').pop().trim() || 'that'
+      return print([`zsh: ${esc(target)}: <span class="dim">read-only filesystem. writing is not permitted on this host.</span>`])
+    }
 
     const [head, ...rest] = text.split(/\s+/)
     const arg = rest.join(' ')
     const h = head.toLowerCase()
     if (h === 'ls') return print(ls(arg))
     if (h === 'cd') return print(cd(arg))
-    if (h === 'cat') return print(cat(arg))
     if (h === 'tree') return print(tree())
     if (h === 'echo') return print([esc(arg) || ''])
+    if (h === 'nano') return print(nano(arg))
+    if (h === 'cat') {
+      if (!rest.length) return print(cat(''))
+      const chunks = []
+      for (const f of rest) {
+        const { lines, err } = f === '.secrets' && !cwd.length
+          ? { lines: FS['.secrets'] } : fileLines(f, 'cat')
+        chunks.push(...(err || lines))
+      }
+      return print(chunks)
+    }
+    if (h === 'head' || h === 'tail') {
+      const { lines, err } = fileLines(arg.replace(/^-n\s*\d+\s*/, ''), h)
+      if (err) return print(err)
+      return print(h === 'head' ? lines.slice(0, 4) : lines.slice(-4))
+    }
+    if (h === 'less' || h === 'more') {
+      const { lines, err } = fileLines(arg, h)
+      if (err) return print(err)
+      return print([...lines, '<span class="dim">(END)</span>'])
+    }
+    if (h === 'grep') {
+      const [pattern, file] = rest
+      if (!pattern || !file) return print(['usage: grep &lt;pattern&gt; &lt;file&gt;'])
+      const { lines, err } = fileLines(file, 'grep')
+      if (err) return print(err)
+      const hits = lines
+        .map(strip)
+        .filter((l) => l.toLowerCase().includes(pattern.toLowerCase()))
+        .map((l) => esc(l).replace(new RegExp('(' + pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<span class="acc">$1</span>'))
+      return print(hits.length ? hits : [`<span class="dim">grep: no matches. the interesting things aren’t greppable.</span>`])
+    }
+    if (h === 'wc') {
+      const { lines, err } = fileLines(arg.replace(/^-\w+\s*/, ''), 'wc')
+      if (err) return print(err)
+      const textOnly = lines.map(strip).join('\n')
+      return print([`  ${lines.length}  ${textOnly.split(/\s+/).filter(Boolean).length}  ${textOnly.length}  ${esc(arg)}`])
+    }
+    if (h === 'file') {
+      const node = nodeAt(resolve(arg))
+      if (node === undefined) return print([`file: ${esc(arg)}: no such file`])
+      if (isDir(node)) return print([`${esc(arg)}: directory`])
+      if (arg.endsWith('.enc')) return print([`${esc(arg)}: data <span class="dim">(encrypted — see cat)</span>`])
+      return print([`${esc(arg)}: ASCII text <span class="dim">(honest, like everything here)</span>`])
+    }
+    if (h === 'man') return print([`No manual entry for ${esc(arg || 'man')}. <span class="dim">The manual is a conversation:</span> ` + MAIL])
+    if (h === 'which') {
+      const known = COMMANDS[arg?.toLowerCase()] || ['vim', 'nano', 'grep', 'head', 'tail', 'less', 'wc', 'file', 'man'].includes(arg?.toLowerCase())
+      return print(known ? [`/usr/bin/${esc(arg)}`] : [`which: no ${esc(arg || '?')} in (/usr/bin:/home/guest/patience)`])
+    }
+    if (['touch', 'mkdir', 'rm', 'mv', 'cp', 'chmod', 'chown', 'tee', 'dd', 'ln'].includes(h)) return print(READONLY(h))
+    if (h === 'uname') return print(['Imperisoft imperisoft.io 6.0-prod #2026 always-on x86_64 <span class="dim">GNU/keep-your-word</span>'])
+    if (h === 'df') return print([
+      'Filesystem      Size  Used Avail Use% Mounted on',
+      'trust           100%  earned  —  100% /',
+      'patience         ∞     some   ∞    1% /home/guest',
+    ])
+    if (h === 'uptime') return print(['up since 2026, unbroken <span class="dim">· load average: one engagement at a time</span>'])
+    if (h === 'env') return print([
+      'USER=guest', 'HOST=imperisoft.io', 'WRITE=denied', 'NDA=active',
+      'CAPACITY=one_engagement', 'NEXT_STEP=' + MAIL,
+    ])
     if (h === 'sudo') return print(['sudo: ' + esc(arg || '?') + ': <span class="dim">ambition noted.</span> <span class="cmdlink" data-cmd="sudo hire">sudo hire</span> <span class="dim">is the one that works.</span>'])
 
     print([`zsh: command not found: ${esc(head)}`, '<span class="dim">try</span> <span class="cmdlink" data-cmd="help">help</span>'])
