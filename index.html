@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Imperisoft</title>
-<meta name="description" content="A software practice of one. Systems that hold money and keep their word.">
+<meta name="description" content="Imperisoft — a software practice of one. Systems that hold money and keep their word. Type help, or write to hello@imperisoft.io.">
 <meta property="og:title" content="Imperisoft">
-<meta property="og:description" content="Systems that hold money and keep their word.">
+<meta property="og:description" content="guest@imperisoft:~$ — systems that hold money and keep their word.">
 <meta name="theme-color" content="#0a0b0d">
 <style>
   :root {
@@ -15,7 +15,9 @@
     --ink-faint: #4d545f;
     --line: #1d2026;
     --page: #0a0b0d;
+    --pane: #0e1013;
     --accent: #6d94ff;
+    --ok: #7dd3a0;
     --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
@@ -24,128 +26,118 @@
     margin: 0;
     background: var(--page);
     color: var(--ink);
-    font: 17px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    letter-spacing: -0.008em;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
     -webkit-font-smoothing: antialiased;
-    /* A single cold light source, high and off-frame. */
     background-image:
-      radial-gradient(80rem 42rem at 75% -22rem, rgba(109, 148, 255, 0.08), transparent 60%),
-      radial-gradient(1.5px 1.5px at 20% 30%, rgba(231, 233, 236, 0.05) 50%, transparent 51%);
+      radial-gradient(80rem 42rem at 75% -22rem, rgba(109, 148, 255, 0.07), transparent 60%),
+      radial-gradient(1.5px 1.5px at 20% 30%, rgba(231, 233, 236, 0.045) 50%, transparent 51%);
     background-repeat: no-repeat, repeat;
     background-size: auto, 96px 96px;
     min-height: 100vh;
   }
   ::selection { background: var(--accent); color: var(--page); }
-  a { color: inherit; }
 
-  .wrap { max-width: 720px; margin: 0 auto; padding: 0 28px; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 26px 22px 60px; }
 
   header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    padding: 28px 0 22px;
-    font-size: 14px;
+    padding-bottom: 18px;
+    font-size: 13px;
   }
-  .mark { font-weight: 700; letter-spacing: -0.02em; text-decoration: none; }
+  .mark { font-weight: 700; color: var(--ink); text-decoration: none; letter-spacing: -0.01em; }
   .mark i { font-style: normal; color: var(--accent); }
-  header small {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--ink-faint);
-    letter-spacing: 0.12em;
-  }
+  header small { font-size: 11px; color: var(--ink-faint); letter-spacing: 0.12em; }
 
-  .hero { padding: 24vh 0 0; }
-  h1 {
-    margin: 0 0 30px;
-    font-size: clamp(2.1rem, 6.4vw, 3.6rem);
-    font-weight: 650;
-    line-height: 1.12;
-    letter-spacing: -0.03em;
-    text-wrap: balance;
+  .term {
+    background: var(--pane);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 24px 80px -32px rgba(0, 0, 0, 0.9);
+    overflow: hidden;
   }
-  h1 .dim { color: var(--ink-faint); }
-  .caret {
-    display: inline-block;
-    width: 0.5em;
-    height: 1em;
-    margin-left: 0.12em;
-    vertical-align: -0.12em;
-    background: var(--accent);
-  }
-  .hero p {
-    margin: 0;
-    max-width: 30rem;
-    color: var(--ink-soft);
-    text-wrap: pretty;
-  }
-
-  .lines {
-    margin: 18vh 0 0;
-    padding: 0;
-    list-style: none;
-    border-top: 1px solid var(--line);
-  }
-  .lines li {
+  .term-bar {
     display: flex;
-    gap: 22px;
-    align-items: baseline;
-    padding: 20px 0;
+    align-items: center;
+    gap: 7px;
+    padding: 11px 14px;
     border-bottom: 1px solid var(--line);
-    font-size: 1.02rem;
   }
-  .lines .k {
-    flex: 0 0 7.5rem;
-    font-family: var(--mono);
+  .term-bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--line); }
+  .term-bar i:first-child { background: #3a3f47; }
+  .term-bar span {
+    margin-left: 8px;
     font-size: 11px;
-    letter-spacing: 0.12em;
     color: var(--ink-faint);
+    letter-spacing: 0.08em;
   }
-  .lines span:last-child { color: var(--ink-soft); }
-  .lines strong { color: var(--ink); font-weight: 600; }
-  .lines a { text-decoration: none; border-bottom: 1px solid var(--line); padding-bottom: 1px; }
-  .lines a:hover { border-color: var(--accent); color: var(--ink); }
+  .term-body {
+    padding: 18px 18px 14px;
+    min-height: 58vh;
+    max-height: 70vh;
+    overflow-y: auto;
+    cursor: text;
+  }
+  .out { white-space: pre-wrap; overflow-wrap: break-word; }
+  .out .dim { color: var(--ink-faint); }
+  .out .soft { color: var(--ink-soft); }
+  .out .ok { color: var(--ok); }
+  .out .acc { color: var(--accent); }
+  .out a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(109,148,255,0.35); }
+  .out a:hover { border-bottom-color: var(--accent); }
+  .out .cmdlink { cursor: pointer; color: var(--ink); border-bottom: 1px dashed var(--ink-faint); }
+  .out .cmdlink:hover { color: var(--accent); border-bottom-color: var(--accent); }
 
-  .contact { margin: 16vh 0 0; }
-  .contact p {
-    margin: 0 0 14px;
-    max-width: 30rem;
+  .prompt-row { display: flex; align-items: baseline; gap: 0; }
+  .ps1 { color: var(--ok); white-space: nowrap; }
+  .ps1 b { color: var(--accent); font-weight: 400; }
+  .cmdline {
+    flex: 1;
+    min-width: 8ch;
+    background: none;
+    border: 0;
+    outline: none;
+    color: var(--ink);
+    font: inherit;
+    caret-color: var(--accent);
+    padding: 0;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .chips button {
+    font: inherit;
+    font-size: 12px;
     color: var(--ink-soft);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 13px;
+    cursor: pointer;
   }
-  .contact a {
-    font-size: clamp(1.3rem, 3.6vw, 1.8rem);
-    font-weight: 650;
-    letter-spacing: -0.02em;
-    text-decoration: none;
-    border-bottom: 2px solid var(--accent);
-    padding-bottom: 2px;
-  }
-  .contact a:hover { color: var(--accent); }
+  .chips button:hover { color: var(--ink); border-color: var(--ink-faint); }
 
   footer {
-    margin-top: 18vh;
-    padding: 24px 0 56px;
-    border-top: 1px solid var(--line);
+    margin-top: 26px;
     display: flex;
     flex-wrap: wrap;
     gap: 8px 24px;
     justify-content: space-between;
-    font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.06em;
     color: var(--ink-faint);
   }
+  footer a { color: inherit; }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .hero h1, .hero p { animation: rise 0.8s cubic-bezier(0.2, 0, 0, 1) both; }
-    .hero p { animation-delay: 0.15s; }
-    .caret { animation: blink 1.1s steps(1) infinite; }
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(14px); }
-      to { opacity: 1; transform: none; }
-    }
-    @keyframes blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
   }
 </style>
 </head>
@@ -156,41 +148,193 @@
     <small>EST. 2026 · UK</small>
   </header>
 
-  <div class="hero">
-    <h1>
-      Systems that hold money<br>
-      and keep their word.<span class="caret" aria-hidden="true"></span>
-    </h1>
-    <p>
-      A software practice of one. Few projects, taken whole — designed, built,
-      run, and written down.
-    </p>
+  <div class="term" role="application" aria-label="Imperisoft interactive terminal">
+    <div class="term-bar" aria-hidden="true">
+      <i></i><i></i><i></i>
+      <span>guest@imperisoft — zsh</span>
+    </div>
+    <div class="term-body" id="body">
+      <div class="out" id="out"></div>
+      <div class="prompt-row">
+        <span class="ps1">guest@<b>imperisoft</b>:~$&nbsp;</span>
+        <input id="cmd" class="cmdline" type="text" autocomplete="off" autocapitalize="off"
+               spellcheck="false" aria-label="Terminal command input" enterkeyhint="go">
+      </div>
+    </div>
   </div>
 
-  <ul class="lines">
-    <li>
-      <span class="k">CURRENTLY</span>
-      <span><a href="https://motoshift.uk"><strong>Motoshift</strong></a> — a marketplace where the money waits until the rider is sure.</span>
-    </li>
-    <li>
-      <span class="k">DISPOSITION</span>
-      <span>Boring technology. Deliberate decisions. Backups proven by restoring them.</span>
-    </li>
-    <li>
-      <span class="k">CAPACITY</span>
-      <span>One engagement at a time.</span>
-    </li>
-  </ul>
-
-  <div class="contact">
-    <p>The rest doesn’t fit on a page.</p>
-    <a href="mailto:hello@imperisoft.io">hello@imperisoft.io</a>
+  <div class="chips" aria-label="Shortcuts for the terminal-averse">
+    <button data-cmd="whois">whois</button>
+    <button data-cmd="work">work</button>
+    <button data-cmd="principles">principles</button>
+    <button data-cmd="contact">contact</button>
   </div>
 
   <footer>
     <span>IMPERISOFT LTD · ENGLAND &amp; WALES · NO. 16280545</span>
-    <span>IMPERISOFT.IO</span>
+    <span><a href="mailto:hello@imperisoft.io">HELLO@IMPERISOFT.IO</a></span>
   </footer>
+
+  <noscript>
+    <p style="color:#8f97a3; max-width: 40rem;">
+      Imperisoft is a UK software practice of one: systems that hold money and
+      keep their word. Currently building Motoshift (motoshift.uk). The rest is
+      a conversation — hello@imperisoft.io.
+    </p>
+  </noscript>
 </div>
+
+<script>
+/* A real terminal, not a film prop: dry output, tab completion, history.
+   Everything important is also reachable without typing (the chips), and
+   the footer carries the registration whether or not JS runs. */
+(() => {
+  const out = document.getElementById('out')
+  const cmd = document.getElementById('cmd')
+  const body = document.getElementById('body')
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+  const history = []
+  let historyAt = 0
+
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+
+  const COMMANDS = {
+    help: () => [
+      '<span class="dim">Available commands:</span>',
+      '  <span class="cmdlink" data-cmd="whois">whois</span>        who is behind this',
+      '  <span class="cmdlink" data-cmd="work">work</span>         what is being built',
+      '  <span class="cmdlink" data-cmd="stack">stack</span>        what it is built with',
+      '  <span class="cmdlink" data-cmd="principles">principles</span>   how it is built',
+      '  <span class="cmdlink" data-cmd="contact">contact</span>      start the real conversation',
+      '  <span class="cmdlink" data-cmd="clear">clear</span>        clean slate',
+    ],
+    whois: () => [
+      '<span class="acc">Imperisoft Ltd</span> — a software practice of one.',
+      '',
+      'One engineer. Few projects, taken whole: designed, built,',
+      'run in production, and written down well enough to hand over.',
+      '',
+      '<span class="dim">Registered in England &amp; Wales, no. 16280545.</span>',
+    ],
+    work: () => [
+      '<span class="acc">CURRENTLY</span>  <a href="https://motoshift.uk">motoshift.uk</a>',
+      '',
+      'A UK marketplace for used motorcycle gear, where the money',
+      'waits until the rider is sure: held payments, verified',
+      'sellers, declared crash history, disputes that end with a',
+      'human decision.',
+      '',
+      '<span class="dim">29 releases this cycle · 543 automated tests · tag → deploy in minutes</span>',
+      '<span class="dim">Everything before this one is under NDA. Ask.</span>',
+    ],
+    stack: () => [
+      'Deliberately boring:',
+      '',
+      '  Django · PostgreSQL · Redis · Celery · React · Capacitor',
+      '',
+      '<span class="dim">A new dependency has to earn its place. Most don’t.</span>',
+    ],
+    principles: () => [
+      '01  Boring technology, chosen on purpose.',
+      '02  Every decision written down, with its reasons.',
+      '03  Migrations that can roll back.',
+      '04  Backups proven by restoring them.',
+      '05  Documentation is part of done.',
+    ],
+    contact: () => [
+      'The rest doesn’t fit in a terminal.',
+      '',
+      '  <a href="mailto:hello@imperisoft.io">hello@imperisoft.io</a>',
+      '',
+      '<span class="dim">Plain email. A human replies.</span>',
+    ],
+    ls: () => ['manifest.txt   work/   <span class="dim">.secrets  (permission denied)</span>'],
+    'cat manifest.txt': () => COMMANDS.principles(),
+    'cat .secrets': () => ['cat: .secrets: <span class="dim">nice try. earn it:</span> <a href="mailto:hello@imperisoft.io">hello@imperisoft.io</a>'],
+    'sudo hire': () => [
+      '<span class="ok">[sudo] permission granted.</span>',
+      '',
+      'Capacity: one engagement at a time.',
+      'Next step: <a href="mailto:hello@imperisoft.io">hello@imperisoft.io</a>',
+    ],
+    whoami: () => ['guest. <span class="dim">For now.</span>'],
+    pwd: () => ['/home/guest/somewhere-worth-being'],
+    exit: () => ['<span class="dim">There is no exit. There is only</span> <span class="cmdlink" data-cmd="contact">contact</span><span class="dim">.</span>'],
+    clear: () => { out.innerHTML = ''; return [] },
+  }
+  COMMANDS.motoshift = COMMANDS.work
+  COMMANDS.hire = COMMANDS['sudo hire']
+  COMMANDS.email = COMMANDS.contact
+
+  function print(lines) {
+    if (!lines.length) return
+    const div = document.createElement('div')
+    div.innerHTML = lines.join('\n') + '\n\n'
+    out.appendChild(div)
+    body.scrollTop = body.scrollHeight
+  }
+
+  function echoPrompt(text) {
+    print(['<span class="ok">guest@<span class="acc">imperisoft</span>:~$</span> ' + esc(text)])
+  }
+
+  function run(raw) {
+    const text = raw.trim()
+    echoPrompt(text)
+    if (!text) return
+    history.push(text)
+    historyAt = history.length
+    const handler = COMMANDS[text.toLowerCase()]
+    if (handler) print(handler())
+    else print([`zsh: command not found: ${esc(text)}`, '<span class="dim">try</span> <span class="cmdlink" data-cmd="help">help</span>'])
+  }
+
+  cmd.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { run(cmd.value); cmd.value = '' }
+    else if (e.key === 'ArrowUp') { if (historyAt > 0) cmd.value = history[--historyAt]; e.preventDefault() }
+    else if (e.key === 'ArrowDown') {
+      cmd.value = historyAt < history.length - 1 ? history[++historyAt] : ((historyAt = history.length), '')
+      e.preventDefault()
+    } else if (e.key === 'Tab') {
+      e.preventDefault()
+      const part = cmd.value.toLowerCase()
+      if (!part) return
+      const match = Object.keys(COMMANDS).filter((c) => c.startsWith(part))
+      if (match.length === 1) cmd.value = match[0]
+      else if (match.length > 1) print(['<span class="dim">' + match.join('   ') + '</span>'])
+    }
+  })
+
+  body.addEventListener('click', () => {
+    if (!getSelection().toString()) cmd.focus()
+  })
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('.cmdlink, .chips button')
+    if (link) { run(link.dataset.cmd); cmd.focus() }
+  })
+
+  // Boot: a couple of quiet lines, then help — typed, unless motion is off.
+  const boot = [
+    '<span class="dim">imperisoft.io — session opened. this terminal is real; so is the work.</span>',
+    '',
+  ]
+  print(boot)
+  const intro = 'help'
+  if (reduced) { run(intro) }
+  else {
+    let i = 0
+    const type = () => {
+      if (i <= intro.length) {
+        cmd.value = intro.slice(0, i++)
+        setTimeout(type, 65 + Math.random() * 60)
+      } else {
+        setTimeout(() => { run(intro); cmd.value = '' }, 220)
+      }
+    }
+    setTimeout(type, 500)
+  }
+  cmd.focus()
+})()
+</script>
 </body>
 </html>
