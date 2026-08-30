@@ -186,21 +186,33 @@
 </div>
 
 <script>
-/* A real terminal with a small filesystem. Everything important is also
-   reachable without typing (the chips), and the footer carries the
+/* A real terminal with a small read-only filesystem. Everything important is
+   also reachable without typing (the chips), and the footer carries the
    registration whether or not JS runs. The dry jokes are load-bearing:
-   curiosity is the qualification we hire clients by. */
+   curiosity is the qualification we hire clients by — and the machine
+   notices it. */
 (() => {
   const out = document.getElementById('out')
   const cmd = document.getElementById('cmd')
   const body = document.getElementById('body')
   const ps1 = document.getElementById('ps1')
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
-  const history = []
-  let historyAt = 0
-  let inVim = false
 
-  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  const store = {
+    get(k) { try { return localStorage.getItem(k) } catch { return null } },
+    set(k, v) { try { localStorage.setItem(k, v) } catch {} },
+  }
+
+  let history = []
+  try { history = JSON.parse(store.get('ims-history') || '[]') } catch {}
+  let historyAt = history.length
+  let inVim = false
+  const seen = new Set()
+  let noticed = store.get('ims-noticed') === '1'
+  const returning = store.get('ims-visited') === '1'
+  store.set('ims-visited', '1')
+
+  const esc = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;')
   const MAIL = '<a href="mailto:hello@imperisoft.io">hello@imperisoft.io</a>'
 
   /* ---------- the filesystem ---------- */
@@ -282,12 +294,21 @@
       ],
     },
     '.secrets': ['cat: .secrets: <span class="dim">nice try. earn it:</span> ' + MAIL],
+    '.plan': ['ship. run. keep your word.'],
+    '.zsh_history': [
+      'vim',
+      ':q',
+      ':q!',
+      'sudo hire',
+      'cat work/archive/2019-2025.tar.enc',
+      '<span class="dim">…the rest is redacted.</span>',
+    ],
     '.ssh': {},
   }
 
-  let cwd = [] // path segments under ~
+  let cwd = []
 
-  const nodeAt = (segs) => segs.reduce((n, s) => (n && typeof n === 'object' && !Array.isArray(n) ? n[s] : undefined), FS)
+  const nodeAt = (segs) => segs.reduce((n, seg) => (n && typeof n === 'object' && !Array.isArray(n) ? n[seg] : undefined), FS)
   const isDir = (n) => n && typeof n === 'object' && !Array.isArray(n)
   const cwdStr = () => '~' + (cwd.length ? '/' + cwd.join('/') : '')
 
@@ -307,7 +328,19 @@
     ps1.innerHTML = 'guest@<b>imperisoft</b>:' + esc(cwdStr()) + '$&nbsp;'
   }
 
-  /* ---------- fs commands ---------- */
+  const strip = (line) => line.replace(/<[^>]*>/g, '')
+  const READONLY = (tool) =>
+    [`${tool}: <span class="dim">read-only filesystem. writing is not permitted on this host.</span>`]
+
+  function fileLines(arg, tool) {
+    if (!arg) return { err: [`${tool}: which file? <span class="dim">(ls is free)</span>`] }
+    const node = nodeAt(resolve(arg))
+    if (node === undefined) return { err: [`${tool}: ${esc(arg)}: no such file or directory`] }
+    if (isDir(node)) return { err: [`${tool}: ${esc(arg)}: is a directory`] }
+    return { lines: node }
+  }
+
+  /* ---------- fs tools ---------- */
 
   function ls(arg) {
     const all = /(^|\s)-a(\s|$)/.test(arg || '')
@@ -336,24 +369,28 @@
     return []
   }
 
-  function cat(arg) {
-    if (!arg) return ['cat: which file? <span class="dim">(ls is free)</span>']
-    const node = nodeAt(resolve(arg))
-    if (node === undefined) return [`cat: ${esc(arg)}: no such file or directory`]
-    if (isDir(node)) return [`cat: ${esc(arg)}: is a directory`]
-    return node
+  function cat(args) {
+    if (!args.length) return ['cat: which file? <span class="dim">(ls is free)</span>']
+    const chunks = []
+    for (const f of args) {
+      const { lines, err } = fileLines(f, 'cat')
+      chunks.push(...(err || lines))
+    }
+    return chunks
   }
 
-  const strip = (line) => line.replace(/<[^>]*>/g, '')
-  const READONLY = (tool) =>
-    [`${tool}: <span class="dim">read-only filesystem. writing is not permitted on this host.</span>`]
-
-  function fileLines(arg, tool) {
-    if (!arg) return { err: [`${tool}: which file? <span class="dim">(ls is free)</span>`] }
-    const node = nodeAt(resolve(arg))
-    if (node === undefined) return { err: [`${tool}: ${esc(arg)}: no such file or directory`] }
-    if (isDir(node)) return { err: [`${tool}: ${esc(arg)}: is a directory`] }
-    return { lines: node }
+  function tree(node = FS, prefix = '') {
+    const lines = prefix === '' ? ['<span class="dim">~</span>'] : []
+    const names = Object.keys(node).filter((n) => !n.startsWith('.')).sort()
+    names.forEach((name, i) => {
+      const last = i === names.length - 1
+      const branch = last ? '└── ' : '├── '
+      const child = node[name]
+      lines.push(prefix + branch + (isDir(child) ? `<span class="acc">${name}/</span>` : name))
+      if (isDir(child)) lines.push(...tree(child, prefix + (last ? '    ' : '│   ')))
+    })
+    if (prefix === '') lines.push('', '<span class="dim">hidden files are hidden for a reason. ls -a.</span>')
+    return lines
   }
 
   function nano(arg) {
@@ -371,21 +408,7 @@
     ]
   }
 
-  function tree(node = FS, prefix = '') {
-    const lines = prefix === '' ? ['<span class="dim">~</span>'] : []
-    const names = Object.keys(node).filter((n) => !n.startsWith('.')).sort()
-    names.forEach((name, i) => {
-      const last = i === names.length - 1
-      const branch = last ? '└── ' : '├── '
-      const child = node[name]
-      lines.push(prefix + branch + (isDir(child) ? `<span class="acc">${name}/</span>` : name))
-      if (isDir(child)) lines.push(...tree(child, prefix + (last ? '    ' : '│   ')))
-    })
-    if (prefix === '') lines.push('', '<span class="dim">hidden files are hidden for a reason. ls -a.</span>')
-    return lines
-  }
-
-  /* ---------- commands ---------- */
+  /* ---------- named commands ---------- */
 
   const COMMANDS = {
     help: () => [
@@ -406,6 +429,7 @@
     work: () => FS.work['motoshift.txt'],
     motoshift: () => FS.work['motoshift.txt'],
     principles: () => FS['manifest.txt'],
+    stack: () => FS['stack.txt'],
     contact: () => [
       'The rest doesn’t fit in a terminal.',
       '',
@@ -414,7 +438,6 @@
       '<span class="dim">Plain email. A human replies.</span>',
     ],
     email: () => COMMANDS.contact(),
-    stack: () => FS['stack.txt'],
     'sudo hire': () => [
       '<span class="ok">[sudo] permission granted.</span>',
       '',
@@ -444,8 +467,98 @@
       '<span class="acc">  ▀▀▓</span>   Shell:    the one you’re in',
       '<span class="acc">  ██▓</span>   Motto:    keep your word',
     ],
-    clear: () => { out.innerHTML = ''; return [] },
-    ls, cd, cat, tree: () => tree(),
+    finger: () => ['Login: guest', 'Plan:', ...FS['.plan']],
+    'finger guest': () => COMMANDS.finger(),
+    uptime: () => ['up since 2026, unbroken <span class="dim">· load average: one engagement at a time</span>'],
+    env: () => [
+      'USER=guest', 'HOST=imperisoft.io', 'WRITE=denied', 'NDA=active',
+      'CAPACITY=one_engagement', 'NEXT_STEP=' + MAIL,
+    ],
+  }
+
+  /* ---------- evaluation (returns lines; null = handled its own output) ---------- */
+
+  function evalText(text) {
+    const lower = text.toLowerCase()
+    if (lower === 'clear') { out.innerHTML = ''; return [] }
+    if (COMMANDS[lower]) return COMMANDS[lower]()
+
+    const [head, ...rest] = text.split(/\s+/)
+    const arg = rest.join(' ')
+    const h = head.toLowerCase()
+
+    if (h === 'ls') return ls(arg)
+    if (h === 'cd') return cd(arg)
+    if (h === 'cat') return cat(rest)
+    if (h === 'tree') return tree()
+    if (h === 'nano' || h === 'pico') return nano(arg)
+    if (h === 'echo') return [esc(arg) || '']
+    if (h === 'head' || h === 'tail') {
+      const { lines, err } = fileLines(arg.replace(/^-n\s*\d+\s*/, ''), h)
+      if (err) return err
+      return h === 'head' ? lines.slice(0, 4) : lines.slice(-4)
+    }
+    if (h === 'less' || h === 'more') {
+      const { lines, err } = fileLines(arg, h)
+      if (err) return err
+      return [...lines, '<span class="dim">(END)</span>']
+    }
+    if (h === 'grep') {
+      const [pattern, file] = rest
+      if (!pattern) return ['usage: grep &lt;pattern&gt; &lt;file&gt;  <span class="dim">(or pipe into me)</span>']
+      if (!file) return ['grep: ' + esc(pattern) + ': <span class="dim">grep needs a file, or a pipe.</span>']
+      const { lines, err } = fileLines(file, 'grep')
+      if (err) return err
+      return grepLines(lines, pattern)
+    }
+    if (h === 'wc') {
+      const { lines, err } = fileLines(arg.replace(/^-\w+\s*/, ''), 'wc')
+      if (err) return err
+      const textOnly = lines.map(strip).join('\n')
+      return [`  ${lines.length}  ${textOnly.split(/\s+/).filter(Boolean).length}  ${textOnly.length}  ${esc(arg)}`]
+    }
+    if (h === 'file') {
+      const node = nodeAt(resolve(arg))
+      if (node === undefined) return [`file: ${esc(arg)}: no such file`]
+      if (isDir(node)) return [`${esc(arg)}: directory`]
+      if (arg.endsWith('.enc')) return [`${esc(arg)}: data <span class="dim">(encrypted — see cat)</span>`]
+      return [`${esc(arg)}: ASCII text <span class="dim">(honest, like everything here)</span>`]
+    }
+    if (h === 'man') return [`No manual entry for ${esc(arg || 'man')}. <span class="dim">The manual is a conversation:</span> ` + MAIL]
+    if (h === 'which') {
+      const known = COMMANDS[arg?.toLowerCase()] ||
+        ['vim', 'vi', 'nano', 'grep', 'head', 'tail', 'less', 'wc', 'file', 'man', 'ls', 'cat', 'cd', 'tree', 'ssh', 'curl'].includes(arg?.toLowerCase())
+      return known ? [`/usr/bin/${esc(arg)}`] : [`which: no ${esc(arg || '?')} in (/usr/bin:/home/guest/patience)`]
+    }
+    if (h === 'ssh') {
+      if (/motoshift/.test(arg)) return ['<span class="dim">connection redirected →</span> <a href="https://motoshift.uk">motoshift.uk</a>']
+      if (/root@/.test(arg)) return ['ssh: <span class="dim">root@imperisoft.io: publickey only. yours isn’t on here. yet.</span>']
+      return ['ssh: <span class="dim">this is the only session you’re getting.</span>']
+    }
+    if (h === 'curl' || h === 'wget') {
+      if (/motoshift/.test(arg)) return ['HTTP/2 200', '<span class="dim">server: alive, and taking payments →</span> <a href="https://motoshift.uk">motoshift.uk</a>']
+      if (/imperisoft/.test(arg) || !arg) return ['<span class="dim">you’re already here.</span>']
+      return ['curl: (6) <span class="dim">the outside world is overrated.</span>']
+    }
+    if (['touch', 'mkdir', 'rm', 'mv', 'cp', 'chmod', 'chown', 'tee', 'dd', 'ln'].includes(h)) return READONLY(h)
+    if (h === 'uname') return ['Imperisoft imperisoft.io 6.0-prod #2026 always-on x86_64 <span class="dim">GNU/keep-your-word</span>']
+    if (h === 'df') return [
+      'Filesystem      Size  Used Avail Use% Mounted on',
+      'trust           100%  earned  —  100% /',
+      'patience         ∞     some   ∞    1% /home/guest',
+    ]
+    if (h === 'sudo') return ['sudo: ' + esc(arg || '?') + ': <span class="dim">ambition noted.</span> <span class="cmdlink" data-cmd="sudo hire">sudo hire</span> <span class="dim">is the one that works.</span>']
+
+    return null
+  }
+
+  function grepLines(lines, pattern) {
+    const safe = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const hits = lines
+      .map(strip)
+      .filter((l) => l.toLowerCase().includes(pattern.toLowerCase()))
+      .map((l) => esc(l).replace(new RegExp('(' + safe + ')', 'ig'), '<span class="acc">$1</span>'))
+    return hits.length ? hits : ['<span class="dim">grep: no matches. the interesting things aren’t greppable.</span>']
   }
 
   /* ---------- engine ---------- */
@@ -463,10 +576,13 @@
   }
 
   function run(raw) {
-    const text = raw.trim()
-    echoPrompt(text)
+    let text = raw.trim()
+    if (text === '!!') text = history[history.length - 1] || ''
+    echoPrompt(raw.trim() === '!!' && text ? text : raw.trim())
     if (!text) return
     history.push(text)
+    if (history.length > 100) history = history.slice(-100)
+    store.set('ims-history', JSON.stringify(history))
     historyAt = history.length
 
     if (inVim) {
@@ -480,6 +596,7 @@
       }
       return print(['<span class="dim">E37: no write since last change —</span> :q! <span class="dim">to escape. everyone forgets.</span>'])
     }
+
     const vimMatch = text.match(/^(vim|vi)(?:\s+(\S+))?$/i)
     if (vimMatch) {
       const shown = []
@@ -493,89 +610,60 @@
     }
     if (text === 'emacs') return print(['<span class="dim">emacs is an operating system. this is a website.</span>'])
 
-    const lower = text.toLowerCase()
-    if (COMMANDS[lower]) return print(COMMANDS[lower]())
-
     if (text.includes('>')) {
       const target = text.split('>').pop().trim() || 'that'
       return print([`zsh: ${esc(target)}: <span class="dim">read-only filesystem. writing is not permitted on this host.</span>`])
     }
 
-    const [head, ...rest] = text.split(/\s+/)
-    const arg = rest.join(' ')
-    const h = head.toLowerCase()
-    if (h === 'ls') return print(ls(arg))
-    if (h === 'cd') return print(cd(arg))
-    if (h === 'tree') return print(tree())
-    if (h === 'echo') return print([esc(arg) || ''])
-    if (h === 'nano') return print(nano(arg))
-    if (h === 'cat') {
-      if (!rest.length) return print(cat(''))
-      const chunks = []
-      for (const f of rest) {
-        const { lines, err } = f === '.secrets' && !cwd.length
-          ? { lines: FS['.secrets'] } : fileLines(f, 'cat')
-        chunks.push(...(err || lines))
-      }
-      return print(chunks)
+    // One honest pipe: anything | grep pattern.
+    const pipeAt = text.indexOf('|')
+    if (pipeAt !== -1) {
+      const left = text.slice(0, pipeAt).trim()
+      const right = text.slice(pipeAt + 1).trim()
+      const gm = right.match(/^grep\s+(\S+)$/i)
+      if (!gm) return print(['zsh: <span class="dim">the only pipe on this host flows into</span> grep<span class="dim">.</span>'])
+      const lines = left ? evalText(left) : null
+      if (lines === null) return print([`zsh: command not found: ${esc(left.split(/\s+/)[0])}`])
+      return print(grepLines(lines, gm[1]))
     }
-    if (h === 'head' || h === 'tail') {
-      const { lines, err } = fileLines(arg.replace(/^-n\s*\d+\s*/, ''), h)
-      if (err) return print(err)
-      return print(h === 'head' ? lines.slice(0, 4) : lines.slice(-4))
-    }
-    if (h === 'less' || h === 'more') {
-      const { lines, err } = fileLines(arg, h)
-      if (err) return print(err)
-      return print([...lines, '<span class="dim">(END)</span>'])
-    }
-    if (h === 'grep') {
-      const [pattern, file] = rest
-      if (!pattern || !file) return print(['usage: grep &lt;pattern&gt; &lt;file&gt;'])
-      const { lines, err } = fileLines(file, 'grep')
-      if (err) return print(err)
-      const hits = lines
-        .map(strip)
-        .filter((l) => l.toLowerCase().includes(pattern.toLowerCase()))
-        .map((l) => esc(l).replace(new RegExp('(' + pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<span class="acc">$1</span>'))
-      return print(hits.length ? hits : [`<span class="dim">grep: no matches. the interesting things aren’t greppable.</span>`])
-    }
-    if (h === 'wc') {
-      const { lines, err } = fileLines(arg.replace(/^-\w+\s*/, ''), 'wc')
-      if (err) return print(err)
-      const textOnly = lines.map(strip).join('\n')
-      return print([`  ${lines.length}  ${textOnly.split(/\s+/).filter(Boolean).length}  ${textOnly.length}  ${esc(arg)}`])
-    }
-    if (h === 'file') {
-      const node = nodeAt(resolve(arg))
-      if (node === undefined) return print([`file: ${esc(arg)}: no such file`])
-      if (isDir(node)) return print([`${esc(arg)}: directory`])
-      if (arg.endsWith('.enc')) return print([`${esc(arg)}: data <span class="dim">(encrypted — see cat)</span>`])
-      return print([`${esc(arg)}: ASCII text <span class="dim">(honest, like everything here)</span>`])
-    }
-    if (h === 'man') return print([`No manual entry for ${esc(arg || 'man')}. <span class="dim">The manual is a conversation:</span> ` + MAIL])
-    if (h === 'which') {
-      const known = COMMANDS[arg?.toLowerCase()] || ['vim', 'nano', 'grep', 'head', 'tail', 'less', 'wc', 'file', 'man'].includes(arg?.toLowerCase())
-      return print(known ? [`/usr/bin/${esc(arg)}`] : [`which: no ${esc(arg || '?')} in (/usr/bin:/home/guest/patience)`])
-    }
-    if (['touch', 'mkdir', 'rm', 'mv', 'cp', 'chmod', 'chown', 'tee', 'dd', 'ln'].includes(h)) return print(READONLY(h))
-    if (h === 'uname') return print(['Imperisoft imperisoft.io 6.0-prod #2026 always-on x86_64 <span class="dim">GNU/keep-your-word</span>'])
-    if (h === 'df') return print([
-      'Filesystem      Size  Used Avail Use% Mounted on',
-      'trust           100%  earned  —  100% /',
-      'patience         ∞     some   ∞    1% /home/guest',
-    ])
-    if (h === 'uptime') return print(['up since 2026, unbroken <span class="dim">· load average: one engagement at a time</span>'])
-    if (h === 'env') return print([
-      'USER=guest', 'HOST=imperisoft.io', 'WRITE=denied', 'NDA=active',
-      'CAPACITY=one_engagement', 'NEXT_STEP=' + MAIL,
-    ])
-    if (h === 'sudo') return print(['sudo: ' + esc(arg || '?') + ': <span class="dim">ambition noted.</span> <span class="cmdlink" data-cmd="sudo hire">sudo hire</span> <span class="dim">is the one that works.</span>'])
 
-    print([`zsh: command not found: ${esc(head)}`, '<span class="dim">try</span> <span class="cmdlink" data-cmd="help">help</span>'])
+    const lines = evalText(text)
+    if (lines !== null) {
+      print(lines)
+      curiosity(text)
+      return
+    }
+    print([`zsh: command not found: ${esc(text.split(/\s+/)[0])}`, '<span class="dim">try</span> <span class="cmdlink" data-cmd="help">help</span>'])
   }
 
+  /* The machine notices sustained curiosity, once. */
+  function curiosity(text) {
+    seen.add(text.split(/\s+/)[0].toLowerCase())
+    if (!noticed && seen.size >= 8) {
+      noticed = true
+      store.set('ims-noticed', '1')
+      setTimeout(() => print([
+        '<span class="dim">broadcast message from root@imperisoft:</span>',
+        '<span class="dim">  eight commands in. most visitors manage two.</span>',
+        '<span class="dim">  you’d fit right in →</span> ' + MAIL,
+      ]), 600)
+    }
+  }
+
+  /* ---------- input ---------- */
+
   cmd.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && (e.key === 'l' || e.key === 'L')) {
+      e.preventDefault(); out.innerHTML = ''; return
+    }
+    if (e.ctrlKey && (e.key === 'c' || e.key === 'C') && !getSelection().toString()) {
+      e.preventDefault()
+      print(['<span class="ok">guest@<span class="acc">imperisoft</span>:' + esc(cwdStr()) + '$</span> ' + esc(cmd.value) + '^C'])
+      cmd.value = ''
+      if (inVim) { inVim = false; print(['<span class="dim">vim: interrupted. lucky.</span>']) }
+      return
+    }
+    if (e.ctrlKey && (e.key === 'u' || e.key === 'U')) { e.preventDefault(); cmd.value = ''; return }
     if (e.key === 'Enter') { run(cmd.value); cmd.value = '' }
     else if (e.key === 'ArrowUp') { if (historyAt > 0) cmd.value = history[--historyAt]; e.preventDefault() }
     else if (e.key === 'ArrowDown') {
@@ -586,14 +674,20 @@
       const value = cmd.value
       if (!value) return
       const parts = value.split(/\s+/)
-      const partial = parts[parts.length - 1].toLowerCase()
-      const here = nodeAt(cwd) || {}
-      const pool = parts.length === 1
-        ? [...Object.keys(COMMANDS), 'vim', ...Object.keys(here)]
-        : Object.keys(here)
+      const token = parts[parts.length - 1]
+      // Path-aware: complete the last segment against its parent directory.
+      const slash = token.lastIndexOf('/')
+      const dirPart = slash === -1 ? '' : token.slice(0, slash + 1)
+      const partial = token.slice(slash + 1).toLowerCase()
+      const parent = nodeAt(resolve(dirPart || '.')) || {}
+      const dirNames = isDir(parent) ? Object.keys(parent) : []
+      const pool = parts.length === 1 && slash === -1
+        ? [...Object.keys(COMMANDS), 'vim', 'nano', 'grep', 'tree', ...dirNames]
+        : dirNames
       const match = [...new Set(pool)].filter((c) => c.toLowerCase().startsWith(partial))
       if (match.length === 1) {
-        parts[parts.length - 1] = match[0]
+        const completed = dirPart + match[0] + (isDir(parent[match[0]]) ? '/' : '')
+        parts[parts.length - 1] = completed
         cmd.value = parts.join(' ')
       } else if (match.length > 1) print(['<span class="dim">' + match.map(esc).join('   ') + '</span>'])
     }
@@ -607,12 +701,16 @@
     if (link) { run(link.dataset.cmd); cmd.focus() }
   })
 
+  /* ---------- boot ---------- */
+
   print([
-    '<span class="dim">imperisoft.io — session opened. this terminal is real; so is the work.</span>',
+    returning
+      ? '<span class="dim">imperisoft.io — session resumed. we remembered. we always do.</span>'
+      : '<span class="dim">imperisoft.io — session opened. this terminal is real; so is the work.</span>',
     '',
   ])
   const intro = 'help'
-  if (reduced) { run(intro) }
+  if (reduced || returning) { run(intro) }
   else {
     let i = 0
     const type = () => {
