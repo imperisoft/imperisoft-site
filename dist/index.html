@@ -39,18 +39,7 @@
   }
   ::selection { background: var(--accent); color: var(--page); }
 
-  .wrap { max-width: 780px; margin: 0 auto; padding: 26px 22px 60px; }
-
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding-bottom: 18px;
-    font-size: 13px;
-  }
-  .mark { font-weight: 700; color: var(--ink); text-decoration: none; letter-spacing: -0.01em; }
-  .mark i { font-style: normal; color: var(--accent); }
-  header small { font-size: 11px; color: var(--ink-faint); letter-spacing: 0.12em; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 5vh 22px 60px; }
 
   .term {
     background: var(--pane);
@@ -76,8 +65,8 @@
   }
   .term-body {
     padding: 18px 18px 14px;
-    min-height: 58vh;
-    max-height: 70vh;
+    min-height: 68vh;
+    max-height: 76vh;
     overflow-y: auto;
     cursor: text;
   }
@@ -143,11 +132,6 @@
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <a class="mark" href="/">Imperisoft<i>.</i></a>
-    <small>EST. 2026 · UK</small>
-  </header>
-
   <div class="term" role="application" aria-label="Imperisoft interactive terminal">
     <div class="term-bar" aria-hidden="true">
       <i></i><i></i><i></i>
