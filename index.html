@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Imperisoft — software engineering</title>
+<meta name="description" content="Imperisoft is a UK software engineering company. We design, build and run production software — end to end.">
+<style>
+  :root {
+    --ink: #14161a;
+    --ink-soft: #565d69;
+    --ink-faint: #8a919c;
+    --line: #e6e8ec;
+    --page: #fdfdfc;
+    --accent: #1d4ed8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font: 17px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    letter-spacing: -0.006em;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 18vh 24px 96px;
+  }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .tag {
+    margin: 0 0 40px;
+    color: var(--ink-soft);
+  }
+  p { margin: 0 0 18px; }
+  .quiet { color: var(--ink-soft); }
+  h2 {
+    margin: 44px 0 12px;
+    font-size: 0.8rem;
+    font-weight: 650;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  li {
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+  }
+  li strong { font-weight: 650; }
+  li span { color: var(--ink-soft); }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  footer {
+    margin-top: 64px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-size: 14px;
+    color: var(--ink-faint);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #eceef1;
+      --ink-soft: #a3abb8;
+      --ink-faint: #6f7885;
+      --line: #262a31;
+      --page: #101215;
+      --accent: #7ba3f7;
+    }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Imperisoft</h1>
+  <p class="tag">Software engineering, end to end.</p>
+
+  <p>
+    We design, build and run production software: the product, the API behind
+    it, the infrastructure under it, and the operations that keep it honest.
+  </p>
+  <p class="quiet">
+    Small by intent. Boring technology, deliberate decisions, everything
+    shipped with the documentation to hand it over.
+  </p>
+
+  <h2>What we do</h2>
+  <ul>
+    <li><strong>Product engineering</strong> — <span>web applications and mobile apps, from first commit to app store.</span></li>
+    <li><strong>Marketplaces &amp; platforms</strong> — <span>payments, trust &amp; safety, moderation tooling, the unglamorous parts done properly.</span></li>
+    <li><strong>Run &amp; reliability</strong> — <span>deployment pipelines, monitoring, backups that restore. We operate what we build.</span></li>
+  </ul>
+
+  <h2>Current work</h2>
+  <ul>
+    <li>
+      <strong><a href="https://motoshift.uk">Motoshift</a></strong> —
+      <span>the UK marketplace for used motorcycle gear. Held payments, verified sellers, honest gear history.</span>
+    </li>
+  </ul>
+
+  <footer>
+    Imperisoft Ltd — registered in England &amp; Wales, company no. 16280545.
+  </footer>
+</main>
+</body>
+</html>
